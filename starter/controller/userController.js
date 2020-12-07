@@ -1,23 +1,23 @@
-const multer = require('multer');
-const sharp = require('sharp');
-const User = require('../models/userModel');
-const factory = require('./handelFactory');
-const AppError = require('../utils/appError');
-const Internship = require('../models/internshipModel');
-const Project = require('../models/projectDetailModel');
-const ExtraCurricular = require('../models/ExtraCurricularModel')
-const OnlineCertification = require('../models/OnlineCertificateModel')
-const catchAsync = require('../utils/catchAsync');
-const studentBody = require('../models/studentBodyModel');
-const studentProject = require('../models/studentProjectModel');
-const studentPublication = require('../models/studentPublicationModel')
+const multer = require("multer");
+const sharp = require("sharp");
+const User = require("../models/userModel");
+const factory = require("./handelFactory");
+const AppError = require("../utils/appError");
+const Internship = require("../models/internshipModel");
+const Project = require("../models/projectDetailModel");
+const ExtraCurricular = require("../models/ExtraCurricularModel");
+const OnlineCertification = require("../models/OnlineCertificateModel");
+const catchAsync = require("../utils/catchAsync");
+const studentBody = require("../models/studentBodyModel");
+const studentProject = require("../models/studentProjectModel");
+const studentPublication = require("../models/studentPublicationModel");
 const multerStorage = multer.memoryStorage();
 
 const multerFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith('image')) {
+  if (file.mimetype.startsWith("image")) {
     cb(null, true);
   } else {
-    cb(new AppError('Not an image! Please upload only images', 400), false);
+    cb(new AppError("Not an image! Please upload only images", 400), false);
   }
 };
 const upload = multer({
@@ -25,7 +25,7 @@ const upload = multer({
   fileFilter: multerFilter,
 });
 
-exports.uploadUserPhoto = upload.single('photo');
+exports.uploadUserPhoto = upload.single("photo");
 
 exports.resizeUserPhoto = catchAsync(async (req, res, next) => {
   if (!req.file) {
@@ -35,7 +35,7 @@ exports.resizeUserPhoto = catchAsync(async (req, res, next) => {
   console.log(req.file.filename);
   await sharp(req.file.buffer)
     .resize(500, 500)
-    .toFormat('jpeg')
+    .toFormat("jpeg")
     .jpeg({ quality: 90 })
     .toFile(`${__dirname}/../public/img/users/${req.file.filename}`);
   next();
@@ -43,43 +43,96 @@ exports.resizeUserPhoto = catchAsync(async (req, res, next) => {
 
 //Student controlls
 //InternShip Section
-exports.getAllInternships = factory.getAll(Internship, {
-  path: 'internships',
+exports.getAllInternships = catchAsync(async (req, res, next) => {
+  if (!req.user) {
+    return new AppError("Please Login to continue", 403);
+  }
+  const internships = await Internship.find({ user: req.user._id });
+
+  res.status(200).json({
+    status: "success",
+    data: {
+      data: {
+        internships,
+      },
+    },
+  });
 });
 //Project Section
-exports.getAllProjects = factory.getAll(Project, {
-  path: 'projects',
+exports.getAllProjects = catchAsync(async (req, res, next) => {
+  if (!req.user) {
+    return new AppError("Please Login to continue", 403);
+  }
+
+  const projects = await Project.find({ user: req.user._id });
+
+  res.status(200).json({
+    status: "success",
+    data: {
+      data: {
+        projects,
+      },
+    },
+  });
 });
 //Extra Curricular Section
-exports.getAllExtraCurriculars = factory.getAll(ExtraCurricular, {
-  path: 'extracurriculars'
-})
+exports.getAllExtraCurriculars = catchAsync(async (req, res, next) => {
+  if (!req.user) {
+    return new AppError("Please Login to continue", 403);
+  }
+
+  const extracurriculars = await ExtraCurricular.find({ user: req.user._id });
+
+  res.status(200).json({
+    status: "success",
+    data: {
+      data: {
+        extracurriculars,
+      },
+    },
+  });
+});
 
 //Online certifiation Section
-exports.getAllOnlineCertificates = factory.getAll(OnlineCertification, {
-  path: 'onlineCertifications'
-})
+exports.getAllOnlineCertificates = catchAsync(async (req, res, next) => {
+  if (!req.user) {
+    return new AppError("Please Login to continue", 403);
+  }
+
+  const onlineCertifications = await OnlineCertification.find({
+    user: req.user._id,
+  });
+
+  res.status(200).json({
+    status: "success",
+    data: {
+      data: {
+        onlineCertifications,
+      },
+    },
+  });
+});
 
 exports.getAllStudentBodies = factory.getAll(studentBody, {
-  path: 'studentBodies',
+  path: "studentBodies",
 });
 exports.getAllStudentProjects = factory.getAll(studentProject, {
-  path: 'studentProjects',
+  path: "studentProjects",
 });
 exports.getAllStudentPublications = factory.getAll(studentPublication, {
-  path: 'studentPublications',
+  path: "studentPublications",
 });
 exports.getcoCurriculars = catchAsync(async (req, res, next) => {
   const user = await User.findById(req.user.id)
-    .populate('studentBodies')
-    .populate('studentProjects')
-    .populate('studentPublications')
+    .populate("studentBodies")
+    .populate("studentProjects")
+    .populate("studentPublications")
     .select(
-      '-role -name -__v -collegeId -email -academics -passwordChangedAt -attendance'
+      "-role -name -__v -collegeId -email -academics -passwordChangedAt -attendance"
     );
 
   res.status(200).json({
-    status: 'success',
+    status: "success",
     data: {
       user,
     },
@@ -88,7 +141,7 @@ exports.getcoCurriculars = catchAsync(async (req, res, next) => {
 //Attendance Section
 exports.getAllAttendance = (req, res, next) => {
   res.status(200).json({
-    status: 'success',
+    status: "success",
     data: {
       attendance: req.user.attendance,
     },
@@ -99,7 +152,7 @@ exports.createAttendance = catchAsync(async (req, res, next) => {
   if (!semester || !theoryAttendance || !praticalAttendance) {
     return next(
       new AppError(
-        'Please Enter the values of semester,Theory Attendance and Pratical Attendance',
+        "Please Enter the values of semester,Theory Attendance and Pratical Attendance",
         400
       )
     );
@@ -116,7 +169,8 @@ exports.createAttendance = catchAsync(async (req, res, next) => {
     if (req.user.attendance.length + 1 < semester) {
       return next(
         new AppError(
-          `Please enter the data of semester ${req.user.attendance.length + 1
+          `Please enter the data of semester ${
+            req.user.attendance.length + 1
           } before ${semester}`,
           400
         )
@@ -136,7 +190,7 @@ exports.createAttendance = catchAsync(async (req, res, next) => {
     }
   );
   res.status(200).json({
-    status: 'success',
+    status: "success",
     data: {
       user,
     },
@@ -145,7 +199,7 @@ exports.createAttendance = catchAsync(async (req, res, next) => {
 exports.updateAttendance = catchAsync(async (req, res, next) => {
   let { semester, theoryAttendance, praticalAttendance } = req.body;
   if (!semester) {
-    return next(new AppError('Please Enter semester ', 400));
+    return next(new AppError("Please Enter semester ", 400));
   }
   if (semester >= req.user.attendance.length + 1) {
     return next(
@@ -176,7 +230,7 @@ exports.updateAttendance = catchAsync(async (req, res, next) => {
     }
   );
   res.status(200).json({
-    status: 'success',
+    status: "success",
     data: {
       user,
     },
@@ -195,7 +249,7 @@ exports.deleteAttendance = catchAsync(async (req, res, next) => {
     }
   );
   res.status(200).json({
-    status: 'success',
+    status: "success",
     data: {
       user: updatedUser,
     },
@@ -222,7 +276,7 @@ const filterObj = (obj, ...allowedFields) => {
 
 exports.getMe = (req, res, next) => {
   res.status(200).json({
-    status: 'success',
+    status: "success",
     data: {
       user: req.user,
     },
@@ -233,7 +287,7 @@ exports.deleteMe = catchAsync(async (req, res, next) => {
   await User.findByIdAndUpdate(req.user.id, { active: false });
 
   res.status(204).json({
-    status: 'success',
+    status: "success",
     data: null,
   });
 });
@@ -242,13 +296,13 @@ exports.updateMe = catchAsync(async (req, res, next) => {
   if (req.body.password || req.body.passwordConfirm) {
     return next(
       new AppError(
-        'This route is not for password update. Please use /updateMyPassword',
+        "This route is not for password update. Please use /updateMyPassword",
         400
       )
     );
   }
   // 2)Fitered out unwanted fields names that are not allowed to be updated
-  const filteredBody = filterObj(req.body, 'name', 'email');
+  const filteredBody = filterObj(req.body, "name", "email");
 
   if (req.file) filteredBody.photo = req.file.filename;
 
@@ -261,7 +315,7 @@ exports.updateMe = catchAsync(async (req, res, next) => {
     runValidators: true,
   });
   res.status(200).json({
-    status: 'success',
+    status: "success",
     data: {
       user: updatedUser,
     },
